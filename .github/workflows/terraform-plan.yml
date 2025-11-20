@@ -194,6 +194,7 @@ jobs:
       id-token: write
       contents: write
     uses: ./.github/workflows/terraform-apply.yml
+    secrets: inherit
     with:
       plan_artifact: terraform-plan
 
@@ -204,5 +205,6 @@ jobs:
       id-token: write
       contents: write
     uses: ./.github/workflows/terraform-delete.yml
+    secrets: inherit
     with:
       plan_artifact: terraform-destroy-plan
