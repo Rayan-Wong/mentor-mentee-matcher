@@ -15,6 +15,7 @@ resource "aws_ecs_task_definition" "app-service" {
       linuxParameters = {
         initProcessEnabled = true
       }
+      stopTimeout = 5
 
       portMappings = [{
         containerPort = var.app_port

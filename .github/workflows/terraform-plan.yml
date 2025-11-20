@@ -162,6 +162,19 @@ jobs:
           echo "Plan failed and lock was not released"
           exit 1
 
+      # ---- Restore ECS Service on Failure ----
+      - name: Restore ECS Service Desired Count
+        if: failure() && github.event.inputs.do_destroy == 'true' && steps.get-ecs-info.outputs.cluster_name != '' && steps.get-ecs-info.outputs.service_name != ''
+        run: |
+          echo "Workflow failed - restoring ECS service to desired count 1"
+          aws ecs update-service \
+            --cluster ${{ steps.get-ecs-info.outputs.cluster_name }} \
+            --service ${{ steps.get-ecs-info.outputs.service_name }} \
+            --desired-count 1 \
+            --region ap-southeast-1
+          echo "ECS service restored to 1 task"
+        continue-on-error: true
+
       # ---- Upload plan artifact ----
       - name: Upload Plan
         if: steps.plan.outcome == 'success' || (steps.lockcheck.outputs.lock_conflict == 'true' && github.event.inputs.release_stale_lock == 'true')
