@@ -43,6 +43,7 @@ variable "cloudflare_api_token" {
   type        = string
   description = "Cloudflare Token for DNS"
   default     = null
+  sensitive   = true
 }
 
 variable "mock_acm_arn" {
