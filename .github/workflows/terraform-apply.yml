@@ -7,22 +7,12 @@ on:
         type: string
         required: true
         description: "Name of the plan artifact to apply"
-      trigger_deploy:
-        type: boolean
-        required: false
-        default: true
-        description: "Whether to check and trigger ECR push if no image exists"
   workflow_dispatch:
     inputs:
       plan_artifact:
         type: string
         required: true
         description: "Name of the plan artifact to apply"
-      trigger_deploy:
-        type: boolean
-        required: false
-        default: true
-        description: "Whether to check and trigger ECR push if no image exists"
 
 jobs:
   apply:
@@ -31,6 +21,8 @@ jobs:
     permissions:
       id-token: write
       contents: write
+    outputs:
+      needs_image: ${{ steps.check-image.outputs.needs_image }}
 
     steps:
       - name: Checkout code
@@ -71,21 +63,7 @@ jobs:
           echo "Terraform apply failed!"
           exit 1
 
-  check-and-deploy:
-    needs: apply
-    if: inputs.trigger_deploy == true
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    outputs:
-      needs_image: ${{ steps.check-image.outputs.needs_image }}
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: AWS OIDC Auth
+      - name: AWS OIDC Auth for ECR Check
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::368339042148:role/github_deploy
@@ -114,8 +92,8 @@ jobs:
           fi
 
   deploy:
-    needs: check-and-deploy
-    if: needs.check-and-deploy.outputs.needs_image == 'true'
+    needs: apply
+    if: needs.apply.outputs.needs_image == 'true'
     uses: ./.github/workflows/ecr-push.yml
     permissions:
       id-token: write
