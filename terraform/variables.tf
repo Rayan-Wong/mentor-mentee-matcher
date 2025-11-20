@@ -39,13 +39,6 @@ variable "use_localstack" {
   default     = false
 }
 
-variable "cloudflare_api_token" {
-  type        = string
-  description = "Cloudflare Token for DNS"
-  default     = null
-  sensitive   = true
-}
-
 variable "mock_acm_arn" {
   type        = string
   description = "Mock ACM for LocalStack"
