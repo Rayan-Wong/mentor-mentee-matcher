@@ -1,6 +1,7 @@
 name: Build and Deploy to ECS
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 permissions:

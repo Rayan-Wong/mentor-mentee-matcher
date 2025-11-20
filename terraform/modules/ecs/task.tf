@@ -3,7 +3,7 @@ resource "aws_ecs_task_definition" "app-service" {
   requires_compatibilities = ["EC2"]
   cpu                      = 256
   memory                   = 512
-  network_mode             = "awsvpc" # Changed from "bridge"
+  network_mode             = "awsvpc"
   execution_role_arn       = var.is_localstack ? var.mock_ecsTaskExecutionRoleARN : "arn:aws:iam::368339042148:role/ecsTaskExecutionRole"
 
   container_definitions = jsonencode([
