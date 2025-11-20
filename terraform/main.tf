@@ -68,3 +68,10 @@ module "ecs" {
   is_localstack                = var.use_localstack
   mock_ecsTaskExecutionRoleARN = var.mock_ecsTaskExecutionRoleARN
 }
+
+module "cloudflare_dns" {
+  source      = "./modules/cloudflare_dns"
+  aws_alb_dns = local.aws_alb_dns
+
+  is_localstack = var.use_localstack
+}

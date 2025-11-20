@@ -21,6 +21,8 @@ jobs:
     permissions:
       id-token: write
       contents: write
+    env:
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_TOKEN }}
     outputs:
       needs_image: ${{ steps.check-image.outputs.needs_image }}
 

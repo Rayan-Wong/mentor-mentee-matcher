@@ -40,3 +40,7 @@ output "ecs_cluster_arn" {
 output "ecs_service_arn" {
   value = module.ecs.ecs_service_arn
 }
+
+output "cloudflare_name" {
+  value = module.cloudflare_dns.cloudflare_name
+}
