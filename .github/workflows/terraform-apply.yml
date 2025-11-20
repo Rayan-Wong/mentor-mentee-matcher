@@ -22,7 +22,7 @@ jobs:
       id-token: write
       contents: write
     env:
-      CLOUDFLARE_API_USER_SERVICE_KEY: ${{ secrets.CLOUDFLARE_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
     outputs:
       needs_image: ${{ steps.check-image.outputs.needs_image }}
 
