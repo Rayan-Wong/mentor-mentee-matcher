@@ -62,3 +62,28 @@ jobs:
         run: |
           echo "Terraform destroy failed!"
           exit 1
+
+      # ---- Restore ECS Service on Cancellation ----
+      - name: Get ECS Cluster and Service Names
+        if: cancelled()
+        id: get-ecs-info
+        run: |
+          CLUSTER_NAME=$(aws ecs list-clusters --region ap-southeast-1 --query 'clusterArns[0]' --output text | awk -F'/' '{print $NF}')
+          SERVICE_NAME=$(aws ecs list-services --cluster $CLUSTER_NAME --region ap-southeast-1 --query 'serviceArns[0]' --output text | awk -F'/' '{print $NF}')
+          echo "cluster_name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+          echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
+          echo "Found ECS Cluster: $CLUSTER_NAME"
+          echo "Found ECS Service: $SERVICE_NAME"
+        continue-on-error: true
+
+      - name: Restore ECS Service to 1 Task
+        if: cancelled() && steps.get-ecs-info.outputs.cluster_name != '' && steps.get-ecs-info.outputs.service_name != ''
+        run: |
+          echo "Workflow cancelled - restoring ECS service to desired count 1"
+          aws ecs update-service \
+            --cluster ${{ steps.get-ecs-info.outputs.cluster_name }} \
+            --service ${{ steps.get-ecs-info.outputs.service_name }} \
+            --desired-count 1 \
+            --region ap-southeast-1
+          echo "ECS service restored to 1 task"
+        continue-on-error: true

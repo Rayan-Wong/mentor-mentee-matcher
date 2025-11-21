@@ -145,11 +145,11 @@ jobs:
           echo "Plan failed and lock was not released"
           exit 1
 
-      # ---- Restore ECS Service on Failure ----
+      # ---- Restore ECS Service on Failure or Cancellation ----
       - name: Restore ECS Service Desired Count
-        if: failure() && github.event.inputs.do_destroy == 'true' && steps.get-ecs-info.outputs.cluster_name != '' && steps.get-ecs-info.outputs.service_name != ''
+        if: (failure() || cancelled()) && github.event.inputs.do_destroy == 'true' && steps.get-ecs-info.outputs.cluster_name != '' && steps.get-ecs-info.outputs.service_name != ''
         run: |
-          echo "Workflow failed - restoring ECS service to desired count 1"
+          echo "Workflow failed or cancelled - restoring ECS service to desired count 1"
           aws ecs update-service \
             --cluster ${{ steps.get-ecs-info.outputs.cluster_name }} \
             --service ${{ steps.get-ecs-info.outputs.service_name }} \
