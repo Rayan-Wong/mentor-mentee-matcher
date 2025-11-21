@@ -74,6 +74,9 @@ jobs:
         if: success()
         working-directory: terraform
         run: |
+          # Pull the latest state from S3
+          terraform state pull > terraform.tfstate
+          
           # Generate diagram from current state
           inframap generate terraform.tfstate --raw > infrastructure.dot
           
