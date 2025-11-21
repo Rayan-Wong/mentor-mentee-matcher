@@ -44,7 +44,7 @@ jobs:
         working-directory: terraform
         run: terraform init -input=false
 
-      # ---- Cleanup ECS and ECR before destroy plan ----
+      # ---- Cleanup ECS before destroy plan ----
       - name: Get ECS Cluster and Service Names
         if: github.event.inputs.do_destroy == 'true'
         id: get-ecs-info
@@ -78,34 +78,6 @@ jobs:
             --region ap-southeast-1
           echo "All tasks have stopped"
         continue-on-error: true
-
-      - name: Delete Images from ECR
-        if: github.event.inputs.do_destroy == 'true'
-        run: |
-          set -e
-          REPOSITORIES=$(aws ecr describe-repositories --region ap-southeast-1 --query 'repositories[*].repositoryName' --output text)
-          FAILED=0
-          for REPO in $REPOSITORIES; do
-            echo "Processing repository: $REPO"
-            IMAGE_IDS=$(aws ecr list-images --repository-name $REPO --region ap-southeast-1 --query 'imageIds[*]' --output json)
-            if [ "$IMAGE_IDS" != "[]" ]; then
-              if aws ecr batch-delete-image \
-                --repository-name $REPO \
-                --image-ids "$IMAGE_IDS" \
-                --region ap-southeast-1; then
-                echo "Successfully deleted images from $REPO"
-              else
-                echo "Failed to delete images from $REPO"
-                FAILED=1
-              fi
-            else
-              echo "No images found in $REPO"
-            fi
-          done
-          if [ $FAILED -eq 1 ]; then
-            echo "One or more repositories failed to delete images"
-            exit 1
-          fi
 
       # ---- Generate and display Terraform graph ----
       - name: Generate Terraform Graph
