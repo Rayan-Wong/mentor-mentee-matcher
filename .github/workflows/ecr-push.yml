@@ -16,19 +16,6 @@ on:
         required: false
         default: ""
   workflow_dispatch:
-    inputs:
-      ecr_repo_name:
-        type: string
-        required: false
-        default: ""
-      ecs_cluster_arn:
-        type: string
-        required: false
-        default: ""
-      ecs_service_arn:
-        type: string
-        required: false
-        default: ""
 
 permissions:
   id-token: write
