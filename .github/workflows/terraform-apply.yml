@@ -62,9 +62,11 @@ jobs:
         id: terraform-output
         working-directory: terraform
         run: |
-          REPO_NAME=$(terraform output -raw ecr_repository_name)
-          CLUSTER_ARN=$(terraform output -raw ecs_cluster_arn)
-          SERVICE_ARN=$(terraform output -raw ecs_service_arn)
+          TF_OUTPUTS=$(terraform output -json)
+          
+          REPO_NAME=$(echo $TF_OUTPUTS | jq -r '.ecr_repository_name.value')
+          CLUSTER_ARN=$(echo $TF_OUTPUTS | jq -r '.ecs_cluster_arn.value')
+          SERVICE_ARN=$(echo $TF_OUTPUTS | jq -r '.ecs_service_arn.value')
           
           echo "ecr_repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
           echo "ecs_cluster_arn=$CLUSTER_ARN" >> $GITHUB_OUTPUT
