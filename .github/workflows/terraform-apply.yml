@@ -71,25 +71,66 @@ jobs:
           role-to-assume: arn:aws:iam::368339042148:role/github_deploy
           aws-region: ap-southeast-1
 
-      - name: Get ECR repository and check for images
-        id: check-image
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get ECR repository and image digest
+        id: ecr-info
         run: |
           ECR_REPO=$(aws ecr describe-repositories --query 'repositories[0].repositoryUri' --output text)
           REPO_NAME=$(echo $ECR_REPO | awk -F'/' '{print $NF}')
           
           echo "ECR Repository: $ECR_REPO"
           echo "Repository Name: $REPO_NAME"
+          echo "ecr_repo=$ECR_REPO" >> $GITHUB_OUTPUT
+          echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
           
-          # Check if any images exist in the repository
-          IMAGE_COUNT=$(aws ecr list-images --repository-name $REPO_NAME --query 'length(imageIds)' --output text)
+          # Try to get the digest of the latest image in ECR
+          ECR_DIGEST=$(aws ecr describe-images \
+            --repository-name $REPO_NAME \
+            --image-ids imageTag=latest \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null || echo "none")
           
-          echo "Number of images found: $IMAGE_COUNT"
+          echo "ECR digest: $ECR_DIGEST"
+          echo "ecr_digest=$ECR_DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image locally
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ steps.ecr-info.outputs.ecr_repo }}:latest
+          cache-from: type=gha
+
+      - name: Get local image digest
+        id: local-digest
+        run: |
+          LOCAL_DIGEST=$(docker inspect ${{ steps.ecr-info.outputs.ecr_repo }}:latest --format='{{index .RepoDigests 0}}' 2>/dev/null | grep -oP 'sha256:[a-f0-9]{64}' || docker inspect ${{ steps.ecr-info.outputs.ecr_repo }}:latest --format='{{.Id}}' | sed 's/sha256://')
+          echo "Local digest: $LOCAL_DIGEST"
+          echo "digest=$LOCAL_DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Compare digests and determine if push needed
+        id: check-image
+        run: |
+          ECR_DIGEST="${{ steps.ecr-info.outputs.ecr_digest }}"
+          LOCAL_DIGEST="${{ steps.local-digest.outputs.digest }}"
           
-          if [ "$IMAGE_COUNT" = "0" ]; then
-            echo "No images found in ECR repository. Will trigger deployment."
+          if [ "$ECR_DIGEST" = "none" ]; then
+            echo "No image found in ECR. Will trigger deployment."
+            echo "needs_image=true" >> $GITHUB_OUTPUT
+          elif [ "$ECR_DIGEST" != "$LOCAL_DIGEST" ]; then
+            echo "Image digest differs. Will trigger deployment."
+            echo "ECR: $ECR_DIGEST"
+            echo "Local: $LOCAL_DIGEST"
             echo "needs_image=true" >> $GITHUB_OUTPUT
           else
-            echo "Images already exist in ECR repository. Skipping deployment."
+            echo "Image digest matches. Skipping deployment."
             echo "needs_image=false" >> $GITHUB_OUTPUT
           fi
 
