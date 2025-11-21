@@ -42,7 +42,7 @@ module "asg" {
   vpc_id           = local.vpc_id
   alb_sg_id        = module.alb.alb_sg_id
   aws_az           = var.aws_az
-  ecs_cluster_name = local.ecs_cluster_name
+  ecs_cluster_name = var.ecs_cluster_name
 
   is_localstack = var.use_localstack
 }
@@ -64,6 +64,7 @@ module "ecs" {
     for key, subnet in local.public_subnets : subnet.id
     if contains(["c"], key)
   ]
+  ecs_cluster_name = var.ecs_cluster_name
 
   is_localstack                = var.use_localstack
   mock_ecsTaskExecutionRoleARN = var.mock_ecsTaskExecutionRoleARN

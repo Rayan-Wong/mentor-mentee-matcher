@@ -2,7 +2,33 @@ name: Build and Deploy to ECS
 
 on:
   workflow_call:
+    inputs:
+      ecr_repo_name:
+        type: string
+        required: false
+        default: ""
+      ecs_cluster_arn:
+        type: string
+        required: false
+        default: ""
+      ecs_service_arn:
+        type: string
+        required: false
+        default: ""
   workflow_dispatch:
+    inputs:
+      ecr_repo_name:
+        type: string
+        required: false
+        default: ""
+      ecs_cluster_arn:
+        type: string
+        required: false
+        default: ""
+      ecs_service_arn:
+        type: string
+        required: false
+        default: ""
 
 permissions:
   id-token: write
@@ -26,26 +52,53 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Get ECR repository name
+      - name: Get ECR repository URI
+        if: inputs.ecr_repo_name == ''
         id: get-ecr
         run: |
           ECR_REPO=$(aws ecr describe-repositories --query 'repositories[0].repositoryUri' --output text)
           echo "ecr_repo=$ECR_REPO" >> $GITHUB_OUTPUT
           echo "ECR Repository: $ECR_REPO"
 
-      - name: Get ECS cluster and service names
+      - name: Get ECS cluster and service ARNs
+        if: inputs.ecs_cluster_arn == '' || inputs.ecs_service_arn == ''
         id: get-ecs
         run: |
           CLUSTER_ARN=$(aws ecs list-clusters --query 'clusterArns[0]' --output text)
-          CLUSTER_NAME=$(echo $CLUSTER_ARN | awk -F'/' '{print $NF}')
+          SERVICE_ARN=$(aws ecs list-services --cluster $CLUSTER_ARN --query 'serviceArns[0]' --output text)
           
-          SERVICE_ARN=$(aws ecs list-services --cluster $CLUSTER_NAME --query 'serviceArns[0]' --output text)
-          SERVICE_NAME=$(echo $SERVICE_ARN | awk -F'/' '{print $NF}')
+          echo "cluster_arn=$CLUSTER_ARN" >> $GITHUB_OUTPUT
+          echo "service_arn=$SERVICE_ARN" >> $GITHUB_OUTPUT
+          echo "ECS Cluster ARN: $CLUSTER_ARN"
+          echo "ECS Service ARN: $SERVICE_ARN"
+
+      - name: Set resources from inputs or discovery
+        id: set-resources
+        run: |
+          if [ -n "${{ inputs.ecr_repo_name }}" ]; then
+            ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+            ECR_REPO="$ECR_REGISTRY/${{ inputs.ecr_repo_name }}"
+            echo "Using ECR repo from input: $ECR_REPO"
+          else
+            ECR_REPO="${{ steps.get-ecr.outputs.ecr_repo }}"
+            echo "Using ECR repo from discovery: $ECR_REPO"
+          fi
           
-          echo "cluster_name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
-          echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
-          echo "ECS Cluster: $CLUSTER_NAME"
-          echo "ECS Service: $SERVICE_NAME"
+          if [ -n "${{ inputs.ecs_cluster_arn }}" ]; then
+            CLUSTER="${{ inputs.ecs_cluster_arn }}"
+            SERVICE="${{ inputs.ecs_service_arn }}"
+            echo "Using cluster ARN from input: $CLUSTER"
+            echo "Using service ARN from input: $SERVICE"
+          else
+            CLUSTER="${{ steps.get-ecs.outputs.cluster_arn }}"
+            SERVICE="${{ steps.get-ecs.outputs.service_arn }}"
+            echo "Using cluster ARN from discovery: $CLUSTER"
+            echo "Using service ARN from discovery: $SERVICE"
+          fi
+          
+          echo "ecr_repo=$ECR_REPO" >> $GITHUB_OUTPUT
+          echo "cluster=$CLUSTER" >> $GITHUB_OUTPUT
+          echo "service=$SERVICE" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -55,18 +108,18 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.get-ecr.outputs.ecr_repo }}:latest
+          tags: ${{ steps.set-resources.outputs.ecr_repo }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Force new ECS deployment
         env:
-          CLUSTER_NAME: ${{ steps.get-ecs.outputs.cluster_name }}
-          SERVICE_NAME: ${{ steps.get-ecs.outputs.service_name }}
+          CLUSTER: ${{ steps.set-resources.outputs.cluster }}
+          SERVICE: ${{ steps.set-resources.outputs.service }}
         run: |
           aws ecs update-service \
-            --cluster $CLUSTER_NAME \
-            --service $SERVICE_NAME \
+            --cluster $CLUSTER \
+            --service $SERVICE \
             --force-new-deployment
           
-          echo "Deployment initiated for $SERVICE_NAME in cluster $CLUSTER_NAME"
+          echo "Deployment initiated for service $SERVICE"

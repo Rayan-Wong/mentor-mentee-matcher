@@ -21,6 +21,13 @@ variable "app_name" {
   default     = "asp_proj"
 }
 
+variable "ecs_cluster_name" {
+
+  type        = string
+  description = "ECS Cluster Name"
+  default     = "app-cluster"
+}
+
 variable "owner" {
   type        = string
   description = "Team or person responsible for this infra"
