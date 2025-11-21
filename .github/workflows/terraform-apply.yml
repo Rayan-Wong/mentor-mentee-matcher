@@ -107,7 +107,7 @@ jobs:
           tags: ${{ steps.ecr-info.outputs.ecr_repo }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=min
-          outputs: type=image,name=${{ steps.ecr-info.outputs.ecr_repo }}:latest
+          provenance: false
 
       - name: Get local image digest
         id: local-digest
