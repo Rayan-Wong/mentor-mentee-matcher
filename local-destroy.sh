@@ -2,15 +2,6 @@
 
 echo "Starting LocalStack Terraform destroy..."
 
-# Check if LocalStack is running
-if ! docker ps | grep -q localstack-main; then
-    echo "Error: LocalStack is not running!"
-    echo "Please start LocalStack first with: docker-compose up -d"
-    exit 1
-else
-    echo "LocalStack is running."
-fi
-
 # Navigate to terraform directory
 cd terraform
 
@@ -42,13 +33,13 @@ if grep "amazonaws\.com" ../.logs/terraform-destroy-plan.log | grep -v "xmlns=" 
     echo "Found AWS API calls:"
     grep "amazonaws\.com" ../.logs/terraform-destroy-plan.log | grep -v "xmlns=" | head -10
     echo ""
-    echo "All API calls must go to localhost:4566 (LocalStack)"
+    echo "All API calls must go to localstack:4566 (LocalStack)"
     exit 1
 fi
 
-if ! grep -q "localhost:4566" ../.logs/terraform-destroy-plan.log; then
+if ! grep -q "localstack:4566" ../.logs/terraform-destroy-plan.log; then
     echo "ERROR: No LocalStack endpoints found in Terraform logs!"
-    echo "Expected to find localhost:4566 in API calls"
+    echo "Expected to find localstack:4566 in API calls"
     exit 1
 fi
 

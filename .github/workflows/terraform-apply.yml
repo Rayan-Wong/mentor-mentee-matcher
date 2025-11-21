@@ -58,6 +58,38 @@ jobs:
         working-directory: terraform
         run: terraform apply -input=false tfplan
 
+      - name: Install Inframap and Graphviz
+        if: success()
+        run: |
+          # Install inframap
+          wget -q https://github.com/cycloidio/inframap/releases/latest/download/inframap-linux-amd64.tar.gz
+          tar -xzf inframap-linux-amd64.tar.gz
+          chmod +x inframap-linux-amd64
+          sudo mv inframap-linux-amd64 /usr/local/bin/inframap
+          
+          # Install graphviz
+          sudo apt-get update && sudo apt-get install -y graphviz
+
+      - name: Generate Infrastructure Diagram
+        if: success()
+        working-directory: terraform
+        run: |
+          # Generate diagram from current state
+          inframap generate terraform.tfstate --raw > infrastructure.dot
+          
+          # Convert to PNG
+          dot -Tpng infrastructure.dot -o infrastructure.png
+          
+          echo "Infrastructure diagram generated successfully"
+
+      - name: Upload Infrastructure Diagram
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: infrastructure-diagram
+          path: terraform/infrastructure.png
+          retention-days: 30
+
       - name: Get ECR Repository Name from Terraform
         id: terraform-output
         working-directory: terraform

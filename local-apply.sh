@@ -2,19 +2,9 @@
 
 echo "Starting LocalStack Terraform deployment..."
 
-# Check if LocalStack is running
-if ! docker ps | grep -q localstack-main; then
-    echo "LocalStack is not running. Starting docker-compose..."
-    docker-compose up -d
-    echo "Waiting for LocalStack to be ready..."
-    sleep 10
-else
-    echo "LocalStack is already running."
-fi
-
 # Fetch ACM certificate ARN from LocalStack
 echo "Fetching ACM certificate ARN from LocalStack..."
-CERT_ARN=$(docker exec localstack-main awslocal acm list-certificates --region ap-southeast-1 --query 'CertificateSummaryList[0].CertificateArn' --output text)
+CERT_ARN=$(awslocal acm list-certificates --region ap-southeast-1 --query 'CertificateSummaryList[0].CertificateArn' --output text)
 
 if [ -z "$CERT_ARN" ] || [ "$CERT_ARN" = "None" ]; then
     echo "Failed to fetch ACM certificate ARN! Make sure LocalStack init.sh created the certificate."
@@ -25,7 +15,7 @@ echo "Certificate ARN: $CERT_ARN"
 
 # Fetch ECS Task Execution Role ARN from LocalStack
 echo "Fetching ECS Task Execution Role ARN from LocalStack..."
-ECS_TASK_EXECUTION_ROLE_ARN=$(docker exec localstack-main awslocal iam get-role --role-name ecsTaskExecutionRole --query 'Role.Arn' --output text)
+ECS_TASK_EXECUTION_ROLE_ARN=$(awslocal iam get-role --role-name ecsTaskExecutionRole --query 'Role.Arn' --output text)
 
 if [ -z "$ECS_TASK_EXECUTION_ROLE_ARN" ] || [ "$ECS_TASK_EXECUTION_ROLE_ARN" = "None" ]; then
     echo "Failed to fetch ECS Task Execution Role ARN! Make sure LocalStack init.sh created the role."
@@ -79,13 +69,13 @@ if grep "amazonaws\.com" ../.logs/terraform-plan.log | grep -v "xmlns=" | grep -
     echo "Found AWS API calls:"
     grep "amazonaws\.com" ../.logs/terraform-plan.log | grep -v "xmlns=" | head -10
     echo ""
-    echo "All API calls must go to localhost:4566 (LocalStack)"
+    echo "All API calls must go to localstack:4566 (LocalStack)"
     exit 1
 fi
 
-if ! grep -q "localhost:4566" ../.logs/terraform-plan.log; then
+if ! grep -q "localstack:4566" ../.logs/terraform-plan.log; then
     echo "ERROR: No LocalStack endpoints found in Terraform logs!"
-    echo "Expected to find localhost:4566 in API calls"
+    echo "Expected to find localstack:4566 in API calls"
     exit 1
 fi
 
@@ -109,7 +99,7 @@ if [ $? -eq 0 ]; then
         # Pull state from LocalStack S3 bucket and pipe to temp file
         echo "Pulling Terraform state from LocalStack S3..."
         TEMP_STATE=$(mktemp)
-        docker exec localstack-main awslocal s3 cp s3://asp-proj-terraform-state/prod/root/terraform.tfstate - > "$TEMP_STATE"
+        awslocal s3 cp s3://asp-proj-terraform-state/prod/root/terraform.tfstate - > "$TEMP_STATE"
         
         if [ $? -eq 0 ] && [ -s "$TEMP_STATE" ]; then
             echo "State file downloaded successfully ($(wc -c < "$TEMP_STATE") bytes)"
