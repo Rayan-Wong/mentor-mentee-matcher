@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     lsb-release \
     graphviz \
+    tree \
     mandoc \
     && rm -rf /var/lib/apt/lists/*
 
