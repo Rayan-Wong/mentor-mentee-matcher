@@ -26,6 +26,10 @@ variable "app_port" {
   type = number
 }
 
+variable "acm_arn" {
+  type = string
+}
+
 variable "is_localstack" {
   type = bool
 }

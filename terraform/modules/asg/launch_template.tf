@@ -1,7 +1,7 @@
 resource "aws_launch_template" "app" {
   name          = "${var.env}-${var.app_name}-lt-"
-  image_id      = "ami-0929b541f173e08bc"
-  instance_type = "t2.micro"
+  image_id      = var.ami_id
+  instance_type = var.ec2_instance_type
 
   block_device_mappings {
     device_name = "/dev/xvda"
@@ -48,5 +48,5 @@ resource "aws_launch_template" "app" {
     security_groups             = [aws_security_group.asg_sg.id]
   }
 
-  key_name = var.is_localstack ? null : "asp_proj"
+  key_name = var.is_localstack ? null : var.app_name
 }

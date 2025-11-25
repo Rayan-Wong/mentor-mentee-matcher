@@ -1,7 +1,7 @@
 resource "cloudflare_dns_record" "cname" {
   count   = var.is_localstack ? 0 : 1
-  zone_id = "1853f51ba6d3f5081e6477329ccd706c"
-  name    = "mentor-mentee-matcher"
+  zone_id = var.dns_zone_id
+  name    = var.root_cname
   ttl     = 1
   type    = "CNAME"
   content = var.aws_alb_dns
@@ -10,8 +10,8 @@ resource "cloudflare_dns_record" "cname" {
 
 resource "cloudflare_dns_record" "www" {
   count   = var.is_localstack ? 0 : 1
-  zone_id = "1853f51ba6d3f5081e6477329ccd706c"
-  name    = "www.mentor-mentee-matcher"
+  zone_id = var.dns_zone_id
+  name    = "www.${var.root_cname}"
   ttl     = 1
   type    = "CNAME"
   content = var.aws_alb_dns

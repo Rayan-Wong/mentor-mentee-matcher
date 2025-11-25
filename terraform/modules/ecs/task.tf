@@ -4,7 +4,7 @@ resource "aws_ecs_task_definition" "app-service" {
   cpu                      = 256
   memory                   = 512
   network_mode             = "awsvpc"
-  execution_role_arn       = var.is_localstack ? var.mock_ecsTaskExecutionRoleARN : "arn:aws:iam::368339042148:role/ecsTaskExecutionRole"
+  execution_role_arn       = var.is_localstack ? var.mock_ecsTaskExecutionRoleARN : var.ecs_execution_role
 
   container_definitions = jsonencode([
     {

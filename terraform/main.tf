@@ -12,6 +12,7 @@ module "alb" {
   tags       = local.global_tags
   env        = var.env
   app_name   = var.app_name
+  acm_arn    = var.certificate_arn
   app_port   = var.app_port
   alb_subnets = [
     for key, subnet in local.public_subnets : subnet.id
@@ -24,8 +25,9 @@ module "alb" {
 }
 
 module "ecr" {
-  source = "./modules/ecr"
-  tags   = local.global_tags
+  source   = "./modules/ecr"
+  app_name = var.app_name
+  tags     = local.global_tags
 }
 
 module "asg" {
@@ -39,10 +41,12 @@ module "asg" {
     for key, subnet in local.public_subnets : subnet.id
     if contains(["c"], key)
   ]
-  vpc_id           = local.vpc_id
-  alb_sg_id        = module.alb.alb_sg_id
-  aws_az           = var.aws_az
-  ecs_cluster_name = var.ecs_cluster_name
+  vpc_id            = local.vpc_id
+  alb_sg_id         = module.alb.alb_sg_id
+  aws_az            = var.aws_az
+  ami_id            = var.ami_id
+  ec2_instance_type = var.ec2_instance_type
+  ecs_cluster_name  = var.ecs_cluster_name
 
   is_localstack = var.use_localstack
 }
@@ -64,7 +68,8 @@ module "ecs" {
     for key, subnet in local.public_subnets : subnet.id
     if contains(["c"], key)
   ]
-  ecs_cluster_name = var.ecs_cluster_name
+  ecs_cluster_name   = var.ecs_cluster_name
+  ecs_execution_role = var.execution_iam_role
 
   is_localstack                = var.use_localstack
   mock_ecsTaskExecutionRoleARN = var.mock_ecsTaskExecutionRoleARN
@@ -73,6 +78,8 @@ module "ecs" {
 module "cloudflare_dns" {
   source      = "./modules/cloudflare_dns"
   aws_alb_dns = local.aws_alb_dns
+  dns_zone_id = var.dns_zone_id
+  root_cname  = var.root_cname
 
   is_localstack = var.use_localstack
 }

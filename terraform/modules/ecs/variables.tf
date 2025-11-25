@@ -50,6 +50,10 @@ variable "repository_url" {
   type = string
 }
 
+variable "ecs_execution_role" {
+  type = string
+}
+
 variable "is_localstack" {
   type = bool
 }

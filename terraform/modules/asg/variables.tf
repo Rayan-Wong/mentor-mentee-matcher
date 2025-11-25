@@ -34,6 +34,14 @@ variable "aws_az" {
   type = string
 }
 
+variable "ami_id" {
+  type = string
+}
+
+variable "ec2_instance_type" {
+  type = string
+}
+
 variable "ecs_cluster_name" {
   type = string
 }
