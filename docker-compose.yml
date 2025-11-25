@@ -5,7 +5,6 @@ services:
     ports:
       - "127.0.0.1:4566:4566"            # LocalStack Gateway
       - "127.0.0.1:4510-4559:4510-4559"  # external services port range
-      - "5000:5000"
     environment:
       # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
       - DEBUG=${DEBUG:-0}
@@ -23,6 +22,9 @@ services:
     container_name: terraform-dev
     volumes:
       - .:/app
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    ports:
+      - "5000:5000"
     depends_on:
       - localstack
     environment:
