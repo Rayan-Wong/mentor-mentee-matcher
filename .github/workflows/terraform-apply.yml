@@ -90,7 +90,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: infrastructure-diagram
-          path: terraform/infrastructure.png
+          path: |
+            terraform/infrastructure.png
+            terraform/infrastructure.dot
           retention-days: 30
 
       - name: Get ECR Repository Name from Terraform
