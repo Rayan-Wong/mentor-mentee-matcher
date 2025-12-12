@@ -25,7 +25,6 @@ jobs:
           use-pro: 'true'
         env:
           LOCALSTACK_API_KEY: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
-          MAIN_DOCKER_NETWORK: bridge
 
       - name: Make localstack hostname resolve locally
         run: |
@@ -33,15 +32,12 @@ jobs:
           getent hosts localstack
 
       - name: Initialize LocalStack resources
-        run: |
-          bash ./init.sh
+        run: bash ./init.sh
 
       - name: Build & tag app image for LocalStack ECS (no ECR dependency)
-        shell: bash
         run: |
           set -euo pipefail
-          REPO="asp_proj"
-          ECR_TAG="000000000000.dkr.ecr.${AWS_REGION}.localhost.localstack.cloud:4566/${REPO}:latest"
+          ECR_TAG="000000000000.dkr.ecr.${AWS_REGION}.localhost.localstack.cloud:4566/asp_proj:latest"
 
           docker build -f Dockerfile.test -t "${REPO}:latest" .
           docker tag "${REPO}:latest" "${ECR_TAG}"
@@ -55,11 +51,9 @@ jobs:
           terraform_version: 1.13.5
 
       - name: Terraform apply into LocalStack
-        run: |
-          bash ./local-apply.sh
+        run: bash ./local-apply.sh
 
       - name: Probe LocalStack ALB endpoint
-        shell: bash
         run: curl -k https://app.elb.localhost.localstack.cloud:4566/
 
       - name: Set up Python
@@ -68,16 +62,13 @@ jobs:
           python-version: '3.12'
 
       - name: Install smoke deps
-        run: |
-          pip install -r smoke-requirements.txt
+        run: pip install -r smoke-requirements.txt
 
       - name: Run smoke tests
-        run: |
-          python smoke_test.py
+        run: python smoke_test.py
 
       - name: Debug Docker state
         if: failure()
-        shell: bash
         run: |
           docker ps -a
           docker images
