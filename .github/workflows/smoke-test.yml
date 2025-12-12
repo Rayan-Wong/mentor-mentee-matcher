@@ -9,58 +9,66 @@ jobs:
   smoke-test:
     runs-on: ubuntu-latest
     env:
-      COMPOSE_PROJECT_NAME: mmm
-      MAIN_DOCKER_NETWORK: mmm_app-network
-    
+      AWS_DEFAULT_REGION: ap-southeast-1
+      AWS_REGION: ap-southeast-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Set up Docker Compose
-        run: |
-          docker compose version
-      
-      - name: Start services with Docker Compose
+      - uses: actions/checkout@v4
+
+      - name: Start LocalStack
+        uses: LocalStack/setup-localstack@v0.2.3
+        with:
+          image-tag: 'latest'
+          install-awslocal: 'true'
+          use-pro: 'true'   
         env:
-          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+          LOCALSTACK_API_KEY: ${{ secrets.LOCALSTACK_API_KEY }}
 
+      - name: Make localstack hostname resolve locally
         run: |
-          docker compose up -d
-          sleep 10
-      
-      - name: Wait for services to be ready
-        run: |
-          docker compose ps
-      
-      - name: Execute local-apply.sh
-        run: |
-          docker exec terraform-dev bash /app/local-apply.sh
-      
-      - name: Execute ecr-push.sh
-        run: |
-          docker exec terraform-dev bash /app/ecr-push.sh
+          echo "127.0.0.1 localstack" | sudo tee -a /etc/hosts
+          getent hosts localstack
 
-      - name: Probe LocalStack ALB endpoint
+      - name: Initialize LocalStack resources (bucket/cert/roles)
         run: |
-          curl -k https://app.elb.localhost.localstack.cloud:4566/
-      
+          bash ./init.sh
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+
+      - name: Terraform apply into LocalStack (reuses your script)
+        run: |
+          bash ./local-apply.sh
+
+      - name: Build + push image to LocalStack ECR (reuses your script)
+        run: |
+          bash ./ecr-push.sh
+
+      - name: Probe LocalStack ALB endpoint (retry)
+        run: |
+          for i in {1..60}; do
+            if curl -ksSf https://app.elb.localhost.localstack.cloud:4566/ > /dev/null; then
+              echo "ALB endpoint is responding"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "ALB endpoint never became ready"
+          exit 1
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      
-      - name: Install smoke test dependencies
+
+      - name: Install smoke deps
         run: |
           pip install -r smoke-requirements.txt
-      
+
       - name: Run smoke tests
         run: |
           python smoke_test.py
-      
-      - name: Cleanup
-        if: always()
-        run: |
-          docker compose down -v
