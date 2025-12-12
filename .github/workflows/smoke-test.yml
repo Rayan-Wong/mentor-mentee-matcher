@@ -1,0 +1,57 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Set up Docker Compose
+        run: |
+          docker compose version
+      
+      - name: Start services with Docker Compose
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+        run: |
+          docker compose up -d
+          sleep 10
+      
+      - name: Wait for services to be ready
+        run: |
+          docker compose ps
+      
+      - name: Execute local-apply.sh
+        run: |
+          docker compose exec -T terraform-dev bash -c "./local-apply.sh"
+      
+      - name: Execute ecr-push.sh
+        run: |
+          docker compose exec -T terraform-dev bash -c "./ecr-push.sh"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install smoke test dependencies
+        run: |
+          pip install -r smoke-requirements.txt
+      
+      - name: Run smoke tests
+        run: |
+          python smoke_test.py
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose down -v
