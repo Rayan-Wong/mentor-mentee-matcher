@@ -22,7 +22,7 @@ jobs:
         with:
           image-tag: 'latest'
           install-awslocal: 'true'
-          use-pro: 'true'   
+          use-pro: 'true'
         env:
           LOCALSTACK_API_KEY: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
           MAIN_DOCKER_NETWORK: bridge
@@ -35,6 +35,19 @@ jobs:
       - name: Initialize LocalStack resources
         run: |
           bash ./init.sh
+
+      - name: Build & tag app image for LocalStack ECS (no ECR dependency)
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO="asp_proj"
+          ECR_TAG="000000000000.dkr.ecr.${AWS_REGION}.localhost.localstack.cloud:4566/${REPO}:latest"
+
+          docker build -f Dockerfile.test -t "${REPO}:latest" .
+          docker tag "${REPO}:latest" "${ECR_TAG}"
+
+          echo "Tagged image:"
+          docker images | grep -E "asp_proj|000000000000\.dkr\.ecr"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -67,4 +80,4 @@ jobs:
         shell: bash
         run: |
           docker ps -a
-          docker compose ps
+          docker images
