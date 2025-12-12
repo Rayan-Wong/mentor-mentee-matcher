@@ -20,6 +20,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
      - app-network
+    privileged: true
 
   terraform-dev:
     build:
