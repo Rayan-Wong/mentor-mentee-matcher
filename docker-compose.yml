@@ -10,9 +10,14 @@ services:
       - DEBUG=${DEBUG:-0}
       - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN- }
       - MAIN_DOCKER_NETWORK=${MAIN_DOCKER_NETWORK:-}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_BRIDGE_IP=host.docker.internal
+      - HOSTNAME_EXTERNAL=host.docker.internal
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./init.sh:/etc/localstack/init/ready.d/init.sh"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
      - app-network
 
@@ -38,6 +43,8 @@ services:
      - app-network
     stdin_open: true
     tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   app-network:
