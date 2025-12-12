@@ -25,6 +25,7 @@ jobs:
           use-pro: 'true'   
         env:
           LOCALSTACK_API_KEY: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+          MAIN_DOCKER_NETWORK: bridge
 
       - name: Make localstack hostname resolve locally
         run: |
@@ -78,7 +79,21 @@ jobs:
 
           sleep 10
 
+      - name: Debug target health (LocalStack)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          CLUSTER_ARN="$(awslocal ecs list-clusters --query 'clusterArns[0]' --output text)"
+          SERVICE_ARN="$(awslocal ecs list-services --cluster "${CLUSTER_ARN}" --query 'serviceArns[0]' --output text)"
+          TG_ARN="$(awslocal ecs describe-services --cluster "${CLUSTER_ARN}" --services "${SERVICE_ARN}" --query 'services[0].loadBalancers[0].targetGroupArn' --output text)"
+
+          echo "TARGET_GROUP_ARN=${TG_ARN}"
+          awslocal elbv2 describe-target-groups --target-group-arns "${TG_ARN}" --output json || true
+          awslocal elbv2 describe-target-health --target-group-arn "${TG_ARN}" --output json || true
+
       - name: Probe LocalStack ALB endpoint
+        shell: bash
         run: curl -k https://app.elb.localhost.localstack.cloud:4566/
 
       - name: Set up Python

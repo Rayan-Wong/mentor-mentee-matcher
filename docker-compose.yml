@@ -9,7 +9,7 @@ services:
       # LocalStack configuration: https://docs.localstack.cloud/references/configuration/
       - DEBUG=${DEBUG:-0}
       - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN- }
-      - MAIN_DOCKER_NETWORK=${MAIN_DOCKER_NETWORK:-}
+      - MAIN_DOCKER_NETWORK=${MAIN_DOCKER_NETWORK:-app-network}
       - DOCKER_HOST=unix:///var/run/docker.sock
       - DOCKER_BRIDGE_IP=host.docker.internal
       - HOSTNAME_EXTERNAL=host.docker.internal
