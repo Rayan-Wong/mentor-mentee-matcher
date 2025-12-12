@@ -55,11 +55,11 @@ awslocal ecs update-service \
     --cluster "$CLUSTER_NAME" \
     --service "$SERVICE_NAME" \
     --desired-count 1 \
-    --force-new-deployment > /dev/null
+    --force-new-deployment
 
 # Wait for service to stabilize
 echo "Waiting for service to stabilize..."
-sleep 15
+sleep 10
 
 # Get Task ARN (only running tasks)
 TASK_ARN_1=$(awslocal ecs list-tasks --region ap-southeast-1 --cluster "$CLUSTER_NAME" --service-name "$SERVICE_NAME" --desired-status RUNNING --query 'taskArns[0]' --output text)

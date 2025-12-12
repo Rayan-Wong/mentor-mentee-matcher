@@ -48,42 +48,38 @@ jobs:
         run: |
           bash ./ecr-push.sh
 
-      - name: Probe LocalStack ALB endpoint
-        run: curl -k https://app.elb.localhost.localstack.cloud:4566/
-
-      - name: Inspect LocalStack ECS task status
+      - name: Force ECS redeploy (LocalStack)
         shell: bash
         run: |
           set -euo pipefail
 
           CLUSTER_ARN="$(awslocal ecs list-clusters --query 'clusterArns[0]' --output text)"
-
           if [ -z "${CLUSTER_ARN}" ] || [ "${CLUSTER_ARN}" = "None" ]; then
             echo "No ECS clusters found in LocalStack." >&2
             awslocal ecs list-clusters --output json || true
             exit 1
           fi
-
           echo "CLUSTER_ARN=${CLUSTER_ARN}"
 
-          TASK_ARN="$(awslocal ecs list-tasks --cluster "${CLUSTER_ARN}" --desired-status RUNNING --query 'taskArns[0]' --output text || true)"
-          if [ -z "${TASK_ARN}" ] || [ "${TASK_ARN}" = "None" ]; then
-            TASK_ARN="$(awslocal ecs list-tasks --cluster "${CLUSTER_ARN}" --query 'taskArns[0]' --output text || true)"
-          fi
-
-          if [ -z "${TASK_ARN}" ] || [ "${TASK_ARN}" = "None" ]; then
-            echo "No ECS tasks found in cluster." >&2
-            awslocal ecs list-tasks --cluster "${CLUSTER_ARN}" --output json || true
+          SERVICE_ARN="$(awslocal ecs list-services --cluster "${CLUSTER_ARN}" --query 'serviceArns[0]' --output text)"
+          if [ -z "${SERVICE_ARN}" ] || [ "${SERVICE_ARN}" = "None" ]; then
+            echo "No ECS services found in cluster." >&2
+            awslocal ecs list-services --cluster "${CLUSTER_ARN}" --output json || true
             exit 1
           fi
+          echo "SERVICE_ARN=${SERVICE_ARN}"
 
-          echo "TASK_ARN=${TASK_ARN}"
-
-          awslocal ecs describe-tasks \
+          awslocal ecs update-service \
             --cluster "${CLUSTER_ARN}" \
-            --tasks "${TASK_ARN}" \
-            --query 'tasks[0].{lastStatus:lastStatus,desiredStatus:desiredStatus,healthStatus:healthStatus,startedAt:startedAt,stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[*].{name:name,lastStatus:lastStatus,reason:reason,exitCode:exitCode}}' \
+            --service "${SERVICE_ARN}" \
+            --force-new-deployment \
+            --desired-count 1 \
             --output json
+
+          sleep 10
+
+      - name: Probe LocalStack ALB endpoint
+        run: curl -k https://app.elb.localhost.localstack.cloud:4566/
 
       - name: Set up Python
         uses: actions/setup-python@v5
