@@ -32,11 +32,11 @@ jobs:
       
       - name: Execute local-apply.sh
         run: |
-          docker compose exec -T terraform-dev bash -c "./local-apply.sh"
+          docker exec terraform-dev bash /app/local-apply.sh
       
       - name: Execute ecr-push.sh
         run: |
-          docker compose exec -T terraform-dev bash -c "./ecr-push.sh"
+          docker exec terraform-dev bash /app/ecr-push.sh
       
       - name: Set up Python
         uses: actions/setup-python@v5
