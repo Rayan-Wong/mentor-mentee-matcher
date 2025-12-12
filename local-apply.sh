@@ -119,7 +119,6 @@ if [ $? -eq 0 ]; then
                 if [ -n "$SERVICE_NAME" ] && [ "$SERVICE_NAME" != "None" ]; then
                     echo "Forcing new deployment with desired count 0 on service: $SERVICE_NAME"
                     awslocal ecs update-service --region ap-southeast-1 --cluster "$CLUSTER_NAME" --service "$SERVICE_NAME" --desired-count 0 --force-new-deployment
-                    sleep 10
                 else
                     echo "No ECS service found in cluster"
                 fi
