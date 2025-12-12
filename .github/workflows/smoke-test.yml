@@ -37,7 +37,8 @@ jobs:
       - name: Build & tag app image for LocalStack ECS (no ECR dependency)
         run: |
           set -euo pipefail
-          ECR_TAG="000000000000.dkr.ecr.${AWS_REGION}.localhost.localstack.cloud:4566/asp_proj:latest"
+          REPO="asp_proj"
+          ECR_TAG="000000000000.dkr.ecr.${AWS_REGION}.localhost.localstack.cloud:4566/${REPO}:latest"
 
           docker build -f Dockerfile.test -t "${REPO}:latest" .
           docker tag "${REPO}:latest" "${ECR_TAG}"
