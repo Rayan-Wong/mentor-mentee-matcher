@@ -24,7 +24,7 @@ jobs:
           install-awslocal: 'true'
           use-pro: 'true'   
         env:
-          LOCALSTACK_API_KEY: ${{ secrets.LOCALSTACK_API_KEY }}
+          LOCALSTACK_API_KEY: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
 
       - name: Make localstack hostname resolve locally
         run: |
