@@ -91,6 +91,43 @@ if [ $? -eq 0 ]; then
     
     echo "Terraform apply completed successfully!"
     
+    # Get ECR repository name from Terraform output
+    echo "Retrieving ECR repository name..."
+    REPO_NAME=$(terraform output -raw ecr_repository_name 2>/dev/null)
+    
+    if [ -z "$REPO_NAME" ]; then
+        echo "Failed to retrieve ECR repository name from Terraform outputs"
+    else
+        echo "ECR Repository: $REPO_NAME"
+        
+        # Check for images in ECR
+        echo "Checking for images in ECR repository..."
+        IMAGE_COUNT=$(awslocal ecr list-images --region ap-southeast-1 --repository-name "$REPO_NAME" --query 'length(imageIds)' --output text 2>/dev/null)
+        
+        if [ "$IMAGE_COUNT" -gt 0 ] 2>/dev/null; then
+            echo "ECR repository contains $IMAGE_COUNT image(s)"
+        else
+            echo "No images found in ECR repository"
+            
+            # Get cluster and service names dynamically
+            echo "Retrieving ECS cluster and service information..."
+            CLUSTER_NAME=$(awslocal ecs list-clusters --region ap-southeast-1 --query 'clusterArns[0]' --output text 2>/dev/null | awk -F'/' '{print $NF}')
+            
+            if [ -n "$CLUSTER_NAME" ] && [ "$CLUSTER_NAME" != "None" ]; then
+                SERVICE_NAME=$(awslocal ecs list-services --region ap-southeast-1 --cluster "$CLUSTER_NAME" --query 'serviceArns[0]' --output text 2>/dev/null | awk -F'/' '{print $NF}')
+                
+                if [ -n "$SERVICE_NAME" ] && [ "$SERVICE_NAME" != "None" ]; then
+                    echo "Forcing new deployment with desired count 0 on service: $SERVICE_NAME"
+                    awslocal ecs update-service --region ap-southeast-1 --cluster "$CLUSTER_NAME" --service "$SERVICE_NAME" --desired-count 0 --force-new-deployment
+                else
+                    echo "No ECS service found in cluster"
+                fi
+            else
+                echo "No ECS cluster found"
+            fi
+        fi
+    fi
+    
     # Generate infrastructure diagram with inframap
     echo "Generating infrastructure diagram..."
     if command -v inframap &> /dev/null; then

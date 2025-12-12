@@ -54,6 +54,7 @@ awslocal ecs update-service \
     --region ap-southeast-1 \
     --cluster "$CLUSTER_NAME" \
     --service "$SERVICE_NAME" \
+    --desired-count 1 \
     --force-new-deployment > /dev/null
 
 # Wait for service to stabilize
