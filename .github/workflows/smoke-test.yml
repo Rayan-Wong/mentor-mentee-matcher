@@ -2,11 +2,15 @@ name: Smoke Test
 
 on:
   push:
-    branches: [main]
+    branches: 
+      - main
 
 jobs:
   smoke-test:
     runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: mmm
+      MAIN_DOCKER_NETWORK: mmm_app-network
     
     steps:
       - name: Checkout code
@@ -22,6 +26,7 @@ jobs:
       - name: Start services with Docker Compose
         env:
           LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
+
         run: |
           docker compose up -d
           sleep 10
@@ -37,11 +42,15 @@ jobs:
       - name: Execute ecr-push.sh
         run: |
           docker exec terraform-dev bash /app/ecr-push.sh
+
+      - name: Probe LocalStack ALB endpoint
+        run: |
+          curl -k https://app.elb.localhost.localstack.cloud:4566/
       
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
       
       - name: Install smoke test dependencies
         run: |
