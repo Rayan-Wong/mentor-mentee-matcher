@@ -79,54 +79,16 @@ jobs:
           echo "CLUSTER_ARN=${CLUSTER_ARN}"
           echo "SERVICE_ARN=${SERVICE_ARN}"
 
-          # Prefer RUNNING, else grab whatever task exists
-          TASK_ARN="$(awslocal ecs list-tasks \
-            --cluster "${CLUSTER_ARN}" \
-            --service-name "${SERVICE_ARN}" \
-            --desired-status RUNNING \
-            --query 'taskArns[0]' \
-            --output text || true)"
+          awslocal ecs list-tasks --cluster "${CLUSTER_ARN}" --service-name "${SERVICE_ARN}" --output json
 
-          if [ -z "${TASK_ARN}" ] || [ "${TASK_ARN}" = "None" ]; then
-            TASK_ARN="$(awslocal ecs list-tasks \
-              --cluster "${CLUSTER_ARN}" \
-              --service-name "${SERVICE_ARN}" \
-              --query 'taskArns[0]' \
-              --output text || true)"
-          fi
-
-          echo "TASK_ARN=${TASK_ARN}"
-
-          if [ -z "${TASK_ARN}" ] || [ "${TASK_ARN}" = "None" ]; then
-            echo "No task found for service."
-            awslocal ecs list-tasks --cluster "${CLUSTER_ARN}" --service-name "${SERVICE_ARN}" --output json || true
+          TASK_ARNS_TEXT="$(awslocal ecs list-tasks --cluster "${CLUSTER_ARN}" --service-name "${SERVICE_ARN}" --query 'taskArns' --output text || true)"
+          if [ -z "${TASK_ARNS_TEXT}" ] || [ "${TASK_ARNS_TEXT}" = "None" ]; then
+            echo "No tasks found for service."
             exit 0
           fi
 
-          # Print just state / stop / container reasons
-          awslocal ecs describe-tasks \
-            --cluster "${CLUSTER_ARN}" \
-            --tasks "${TASK_ARN}" \
-            --query 'tasks[0].{
-              taskArn:taskArn,
-              lastStatus:lastStatus,
-              desiredStatus:desiredStatus,
-              healthStatus:healthStatus,
-              stopCode:stopCode,
-              stoppedReason:stoppedReason,
-              startedAt:startedAt,
-              stoppedAt:stoppedAt,
-              containerInstanceArn:containerInstanceArn,
-              attachments:attachments,
-              containers:containers[].{
-                name:name,
-                lastStatus:lastStatus,
-                exitCode:exitCode,
-                reason:reason,
-                runtimeId:runtimeId
-              }
-            }' \
-            --output json
+          echo "Describing tasks: ${TASK_ARNS_TEXT}"
+          awslocal ecs describe-tasks --cluster "${CLUSTER_ARN}" --tasks ${TASK_ARNS_TEXT} --output json
 
       - name: LocalStack ALB workaround (proxy 172.17.0.1:5000 -> task container IP:5000)
         shell: bash
