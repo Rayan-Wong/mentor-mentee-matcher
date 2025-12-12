@@ -31,7 +31,7 @@ jobs:
           echo "127.0.0.1 localstack" | sudo tee -a /etc/hosts
           getent hosts localstack
 
-      - name: Initialize LocalStack resources (bucket/cert/roles)
+      - name: Initialize LocalStack resources
         run: |
           bash ./init.sh
 
@@ -40,25 +40,16 @@ jobs:
         with:
           terraform_version: 1.13.5
 
-      - name: Terraform apply into LocalStack (reuses your script)
+      - name: Terraform apply into LocalStack
         run: |
           bash ./local-apply.sh
 
-      - name: Build + push image to LocalStack ECR (reuses your script)
+      - name: Build + push image to LocalStack ECR
         run: |
           bash ./ecr-push.sh
 
-      - name: Probe LocalStack ALB endpoint (retry)
-        run: |
-          for i in {1..60}; do
-            if curl -ksSf https://app.elb.localhost.localstack.cloud:4566/ > /dev/null; then
-              echo "ALB endpoint is responding"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "ALB endpoint never became ready"
-          exit 1
+      - name: Probe LocalStack ALB endpoint
+        run: curl -k https://app.elb.localhost.localstack.cloud:4566/
 
       - name: Set up Python
         uses: actions/setup-python@v5
