@@ -49,7 +49,7 @@ jobs:
         run: |
           bash ./ecr-push.sh
 
-      - name: Force ECS redeploy (LocalStack)
+      - name: Force ECS redeploy
         shell: bash
         run: |
           set -euo pipefail
@@ -69,7 +69,7 @@ jobs:
 
           sleep 10
 
-      - name: Dump ECS task state (LocalStack)
+      - name: Dump ECS task state
         shell: bash
         run: |
           set -euo pipefail
@@ -78,19 +78,54 @@ jobs:
           SERVICE_ARN="$(awslocal ecs list-services --cluster "${CLUSTER_ARN}" --query 'serviceArns[0]' --output text)"
           echo "CLUSTER_ARN=${CLUSTER_ARN}"
           echo "SERVICE_ARN=${SERVICE_ARN}"
-          
-          TASK_ARN="$(awslocal ecs list-tasks --cluster "${CLUSTER_ARN}" --service-name "${SERVICE_ARN}" --desired-status RUNNING --query 'taskArns[0]' --output text || true)"
+
+          # Prefer RUNNING, else grab whatever task exists
+          TASK_ARN="$(awslocal ecs list-tasks \
+            --cluster "${CLUSTER_ARN}" \
+            --service-name "${SERVICE_ARN}" \
+            --desired-status RUNNING \
+            --query 'taskArns[0]' \
+            --output text || true)"
+
+          if [ -z "${TASK_ARN}" ] || [ "${TASK_ARN}" = "None" ]; then
+            TASK_ARN="$(awslocal ecs list-tasks \
+              --cluster "${CLUSTER_ARN}" \
+              --service-name "${SERVICE_ARN}" \
+              --query 'taskArns[0]' \
+              --output text || true)"
+          fi
+
           echo "TASK_ARN=${TASK_ARN}"
 
           if [ -z "${TASK_ARN}" ] || [ "${TASK_ARN}" = "None" ]; then
-            echo "No RUNNING task found to describe."
+            echo "No task found for service."
+            awslocal ecs list-tasks --cluster "${CLUSTER_ARN}" --service-name "${SERVICE_ARN}" --output json || true
             exit 0
           fi
 
+          # Print just state / stop / container reasons
           awslocal ecs describe-tasks \
             --cluster "${CLUSTER_ARN}" \
             --tasks "${TASK_ARN}" \
-            --query 'tasks[0].{taskArn:taskArn,lastStatus:lastStatus,desiredStatus:desiredStatus,healthStatus:healthStatus,startedAt:startedAt,launchType:launchType,containerInstanceArn:containerInstanceArn,attachments:attachments,containers:containers}' \
+            --query 'tasks[0].{
+              taskArn:taskArn,
+              lastStatus:lastStatus,
+              desiredStatus:desiredStatus,
+              healthStatus:healthStatus,
+              stopCode:stopCode,
+              stoppedReason:stoppedReason,
+              startedAt:startedAt,
+              stoppedAt:stoppedAt,
+              containerInstanceArn:containerInstanceArn,
+              attachments:attachments,
+              containers:containers[].{
+                name:name,
+                lastStatus:lastStatus,
+                exitCode:exitCode,
+                reason:reason,
+                runtimeId:runtimeId
+              }
+            }' \
             --output json
 
       - name: LocalStack ALB workaround (proxy 172.17.0.1:5000 -> task container IP:5000)
