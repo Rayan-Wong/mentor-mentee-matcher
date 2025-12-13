@@ -26,24 +26,18 @@ SERVICE_NAME=$(awslocal ecs list-services --region ap-southeast-1 --cluster "$CL
 echo "ECS Cluster: $CLUSTER_NAME"
 echo "ECS Service: $SERVICE_NAME"
 
-# Step 2: Build and push Docker image (first time)
+# Step 2: Build and push Docker image
 echo ""
 echo "Step 2: Building and pushing Docker image..."
-TIMESTAMP_1=$(date +%s)
-docker build --build-arg CACHE_BUST=$TIMESTAMP_1 -f Dockerfile.test -t "$REPO_NAME:latest" .
+ECR_TAG="${REPO_URI}:latest"
 
-if [ $? -ne 0 ]; then
-    echo "ERROR: Docker build failed!"
-    exit 1
-fi
+docker build -f Dockerfile -t "${REPO_NAME}:latest" .
+docker tag "${REPO_NAME}:latest" "${ECR_TAG}"
 
-docker tag "$REPO_NAME:latest" "$REPO_URI:latest"
-docker push "$REPO_URI:latest"
+echo "Tagged image: ${ECR_TAG}"
+docker images | grep -E "${REPO_NAME}|000000000000\.dkr\.ecr" || true
 
-if [ $? -ne 0 ]; then
-    echo "ERROR: Docker push failed!"
-    exit 1
-fi
+docker push "${ECR_TAG}"
 
 echo "Image pushed successfully"
 
